@@ -174,7 +174,37 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # the momentum variable to update the running mean and running variance,    #
     # storing your result in the running_mean and running_var variables.        #
     #############################################################################
-    pass
+    N, D = x.shape
+
+    #step1: calciulate mean
+    mu = 1./N * np.sum(x, axis = 0)
+
+    #step2: substract mean vector of every trainings example
+    xmu = x - mu
+
+    #step3: following the lower branch - calculation denominator
+    sq = xmu ** 2
+
+    #step4: calculate variance
+    var = 1./N * np.sum(sq, axis = 0)
+
+    #step5: add eps for numerical stability, then sqrt
+    sqrtvar = np.sqrt(var + eps)
+
+    #step6: invert sqrtwar
+    ivar = 1./sqrtvar
+
+    #step7: execute normalization
+    xhat = xmu * ivar
+
+    #step8: Nor the two transformation steps
+    gammax = gamma * xhat
+
+    #step9
+    out = gammax + beta
+
+    #store intermediate
+    cache = (xhat,gamma,xmu,ivar,sqrtvar,var,eps)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -539,6 +569,22 @@ def svm_loss(x, y):
   return loss, dx
 
 
+def softmax_scores(x):
+  """
+  Computes the probabilities of a softmax classifier
+
+  Inputs:
+  - x: Input data, of shape (N, C) where x[i, j] is the score for the jth class
+    for the ith input.
+
+  Returns:
+  - probs: normalized scores
+  """
+  probs = np.exp(x - np.max(x, axis=1, keepdims=True))
+  probs /= np.sum(probs, axis=1, keepdims=True)
+  return probs
+
+
 def softmax_loss(x, y):
   """
   Computes the loss and gradient for softmax classification.
@@ -553,8 +599,8 @@ def softmax_loss(x, y):
   - loss: Scalar giving the loss
   - dx: Gradient of the loss with respect to x
   """
-  probs = np.exp(x - np.max(x, axis=1, keepdims=True))
-  probs /= np.sum(probs, axis=1, keepdims=True)
+  probs = softmax_scores(x)
+
   N = x.shape[0]
   loss = -np.sum(np.log(probs[np.arange(N), y])) / N
   dx = probs.copy()
