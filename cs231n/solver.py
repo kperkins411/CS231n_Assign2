@@ -101,6 +101,9 @@ class Solver(object):
       training.
     """
     self.model = model
+    #import pdb
+    #pdb.set_trace()
+    
     self.X_train = data['X_train']
     self.y_train = data['y_train']
     self.X_val = data['X_val']
