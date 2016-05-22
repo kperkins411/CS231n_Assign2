@@ -118,7 +118,7 @@ class Solver(object):
 
     self.print_every = kwargs.pop('print_every', 10)
     self.verbose = kwargs.pop('verbose', True)
-
+ 
     # Throw an error if there are extra keyword arguments
     if len(kwargs) > 0:
       extra = ', '.join('"%s"' % k for k in kwargs.keys())
