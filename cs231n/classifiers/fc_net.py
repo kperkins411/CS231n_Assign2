@@ -19,7 +19,7 @@ class TwoLayerNet(object):
     """
 
     def __init__(self, input_dim=3 * 32 * 32, hidden_dim=100, num_classes=10,
-                 weight_scale=1e-3, reg=0.0, use_smart_w1_init=True, std=1e-4):
+                 weight_scale=1e-3, reg=0.0, use_smart_w1_init=False, std=1e-4):
         """
         Initialize a new network.
 
@@ -192,14 +192,16 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zero.                                #
         ############################################################################
 
-        # push input_dim to the front of list
-        hidden_dims.insert(0, input_dim)
+        # push input_dim to the front of list, and add the num classes to back
+        temp_dims = np.copy(hidden_dims)
+        temp_dims = np.insert(temp_dims,0,input_dim)
+        temp_dims = np.insert(temp_dims,len(temp_dims),num_classes )
 
         i = 1
-        while i < self.num_layers:
+        while i <= self.num_layers:
             self.params['W' + str(i)] = np.random.normal(loc=0.0, scale=weight_scale,
-                                                         size=(hidden_dims[i - 1], hidden_dims[i]))
-            self.params['b' + str(i)] = np.zeros(hidden_dims[i])
+                                                         size=(temp_dims[i-1], temp_dims[i]))
+            self.params['b' + str(i)] = np.zeros(temp_dims[i])
             # self.params['gamma' + str(i)] =
             # self.params['beta'  + str(i)] =
             i = i + 1
@@ -227,7 +229,7 @@ class FullyConnectedNet(object):
             self.bn_params = [{'mode': 'train'} for i in range(self.num_layers - 1)]
 
         # Cast all parameters to the correct datatype
-        for k, v in self.params.iteritems():
+        for k, v in self.params.items():
             self.params[k] = v.astype(dtype)
 
     def loss(self, X, y=None):
@@ -260,17 +262,21 @@ class FullyConnectedNet(object):
         # self.bn_params[1] to the forward pass for the second batch normalization #
         # layer, etc.                                                              #
         ############################################################################
+
+        localdata = {}
         i = 1
-        allbutlastlayer = self.num_layers - 1
 
         # do all affine -reLu layers except for final one
         next_input = X
-        while i < allbutlastlayer:
-            outaf, _ = affine_forward(next_input, self.params['W' + str(i)], self.params['b' + str(i)])
-            next_input, _ = relu_forward(outaf)
+        while i < self.num_layers:
+            scores,cache  = affine_forward(next_input, self.params['W' + str(i)], self.params['b' + str(i)])
+            localdata[i] = cache
+            next_input, _ = relu_forward(scores)
             i = i + 1
 
-        scores, _ = affine_forward(next_input, self.params['W' + str(i)], self.params['b' + str(i)])
+        #do the final affine layer
+        scores, cache = affine_forward(next_input, self.params['W' + str(i)], self.params['b' + str(i)])
+        localdata[i] = cache
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -297,18 +303,29 @@ class FullyConnectedNet(object):
 
         # add the reg loss
         reg_loss = 0.0;
+
         i = self.num_layers
+
+        W_position = 0
         dout = dsm
         while i > 0:
             # reg loss
-            reg_loss += np.square(self.params['W' + str(i)])
+            reg_loss += np.sum(np.square(self.params['W' + str(i)]))
 
-            dx, dw, db = affine_backward(dout, cache)fix this problem with starting at 1
+            # use dw and db to change W2 and b2
+            # use dx to propegate back through relu
+            dx, dw, db = affine_backward(dout, localdata[i])
 
+            #adjust net params
+            grads["W" + str(i)] = dw + self.reg * self.params["W" + str(i)]
+            grads["b" + str(i)] = db
+
+            dx = relu_backward(dx, localdata[i][W_position])
+            dout = dx
             i = i - 1
 
         # add in reg loss
-        loss += reg_loss
+        loss += 0.5 * self.reg *reg_loss
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
