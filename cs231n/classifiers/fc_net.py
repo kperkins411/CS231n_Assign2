@@ -264,14 +264,26 @@ class FullyConnectedNet(object):
         ############################################################################
 
         localdata = {}
+        do_data = {}
         i = 1
 
         # do all affine -reLu layers except for final one
         next_input = X
         while i < self.num_layers:
+            #add everything up
             scores,cache  = affine_forward(next_input, self.params['W' + str(i)], self.params['b' + str(i)])
+
+            #cache results
             localdata[i] = cache
+
+            #relu it all
             next_input, _ = relu_forward(scores)
+
+            #add dropout if needed
+            if self.use_dropout:
+                out,do_cache = dropout_forward(next_input,self.dropout_param)
+                do_data[i] = do_cache
+
             i = i + 1
 
         #do the final affine layer
@@ -321,6 +333,11 @@ class FullyConnectedNet(object):
             grads["b" + str(i)] = db
 
             dx = relu_backward(dx, localdata[i][W_position])
+            
+            if self.use_dropout:
+                #get the mask
+                dx = dx*do_data[i][1]
+                
             dout = dx
             i = i - 1
 

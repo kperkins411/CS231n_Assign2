@@ -312,26 +312,12 @@ def dropout_forward(x, dropout_param):
   if 'seed' in dropout_param:
     np.random.seed(dropout_param['seed'])
 
-  mask = None
-  out = None
-
   if mode == 'train':
-    ###########################################################################
-    # TODO: Implement the training phase forward pass for inverted dropout.   #
-    # Store the dropout mask in the mask variable.                            #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                            END OF YOUR CODE                             #
-    ###########################################################################
-  elif mode == 'test':
-    ###########################################################################
-    # TODO: Implement the test phase forward pass for inverted dropout.       #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                            END OF YOUR CODE                             #
-    ###########################################################################
+    mask = (np.random.rand(*x.shape) < p)/p
+    out = x*mask
+  else:
+    mask = None
+    out = x
 
   cache = (dropout_param, mask)
   out = out.astype(x.dtype, copy=False)
@@ -350,17 +336,10 @@ def dropout_backward(dout, cache):
   dropout_param, mask = cache
   mode = dropout_param['mode']
   
-  dx = None
+  dx = dout
   if mode == 'train':
-    ###########################################################################
-    # TODO: Implement the training phase backward pass for inverted dropout.  #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                            END OF YOUR CODE                             #
-    ###########################################################################
-  elif mode == 'test':
-    dx = dout
+    #WTF changing the following line from dx *=mask to dx = dout*mask fixed error check problem    
+    dx =dout*mask
   return dx
 
 
