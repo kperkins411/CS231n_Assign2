@@ -133,6 +133,7 @@ class TwoLayerNet(object):
         return loss, grads
 
 
+###################################################################################
 class FullyConnectedNet(object):
     """
     A fully-connected neural network with an arbitrary number of hidden layers,
@@ -197,11 +198,11 @@ class FullyConnectedNet(object):
         temp_dims = np.insert(temp_dims,0,input_dim)
         temp_dims = np.insert(temp_dims,len(temp_dims),num_classes )
 
-        i = 1
-        while i <= self.num_layers:
+        i = 0
+        while i <= self.num_layers-1:
             self.params['W' + str(i)] = np.random.normal(loc=0.0, scale=weight_scale,
-                                                         size=(temp_dims[i-1], temp_dims[i]))
-            self.params['b' + str(i)] = np.zeros(temp_dims[i])
+                                                         size=(temp_dims[i], temp_dims[i+1]))
+            self.params['b' + str(i)] = np.zeros(temp_dims[i+1])
             # self.params['gamma' + str(i)] =
             # self.params['beta'  + str(i)] =
             i = i + 1
@@ -265,7 +266,7 @@ class FullyConnectedNet(object):
 
         localdata = {}
         do_data = {}
-        i = 1
+        i = 0
 
         # do all affine -reLu layers except for final one
         next_input = X
@@ -276,19 +277,18 @@ class FullyConnectedNet(object):
             #cache results
             localdata[i] = cache
 
-            #relu it all
-            next_input, _ = relu_forward(scores)
+            #dont do last layer since it is softmax with no relu
+            if i != self.num_layers-1:
+                #relu it all
+                next_input, _ = relu_forward(scores)
 
-            #add dropout if needed
-            if self.use_dropout:
-                out,do_cache = dropout_forward(next_input,self.dropout_param)
-                do_data[i] = do_cache
+                #add dropout if needed
+                if self.use_dropout:
+                    out,do_cache = dropout_forward(next_input,self.dropout_param)
+                    do_data[i] = do_cache
+                    next_input = out
 
             i = i + 1
-
-        #do the final affine layer
-        scores, cache = affine_forward(next_input, self.params['W' + str(i)], self.params['b' + str(i)])
-        localdata[i] = cache
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -315,12 +315,11 @@ class FullyConnectedNet(object):
 
         # add the reg loss
         reg_loss = 0.0;
-
-        i = self.num_layers
-
+        i = self.num_layers-1
         W_position = 0
         dout = dsm
-        while i > 0:
+
+        while i >= 0:
             # reg loss
             reg_loss += np.sum(np.square(self.params['W' + str(i)]))
 
@@ -332,12 +331,12 @@ class FullyConnectedNet(object):
             grads["W" + str(i)] = dw + self.reg * self.params["W" + str(i)]
             grads["b" + str(i)] = db
 
-            dx = relu_backward(dx, localdata[i][W_position])
-            
-            if self.use_dropout:
-                #get the mask
-                dx = dx*do_data[i][1]
-                
+            if i != 0:
+                dx = relu_backward(dx, localdata[i][W_position])
+                if self.use_dropout:
+                    #get the mask
+                    dx = dx*do_data[i-1][1]
+
             dout = dx
             i = i - 1
 
