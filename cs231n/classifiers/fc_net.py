@@ -198,17 +198,19 @@ class FullyConnectedNet(object):
         temp_dims.insert(0,input_dim)
         temp_dims.insert(len(temp_dims),num_classes )
 
+        #import pdb
+        #pdb.set_trace()
+            
         i = 0
         while i <= self.num_layers-1:
             self.params['W' + str(i)] = np.random.normal(loc=0.0, scale=weight_scale,
                                                          size=(temp_dims[i], temp_dims[i+1]))
             self.params['b' + str(i)] = np.zeros(temp_dims[i+1])
-            import pdb
-            pdb.set_trace()
-            
+               
             if self.use_batchnorm == True:
-                self.params['gamma' + str(i)] = np.ones(temp_dims[i+1])
-                self.params['beta'  + str(i)] = np.zeros(temp_dims[i+1])
+                if i<=self.num_layers-2:   #dont have batch norm in the final layer
+                    self.params['gamma' + str(i)] = np.ones(temp_dims[i+1])
+                    self.params['beta'  + str(i)] = np.zeros(temp_dims[i+1])
             i = i + 1
 
         ############################################################################
@@ -337,7 +339,7 @@ class FullyConnectedNet(object):
             #adjust net params
             grads["W" + str(i)] = dw + self.reg * self.params["W" + str(i)]
             grads["b" + str(i)] = db
-
+            
             if i != 0:
                 dx = relu_backward(dx, local_affinedata[i][W_position])
                 if self.use_dropout:
