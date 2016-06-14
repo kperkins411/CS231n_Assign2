@@ -132,7 +132,7 @@ class TwoLayerNet(object):
         ############################################################################
         return loss, grads
 
-
+import copy
 ###################################################################################
 class FullyConnectedNet(object):
     """
@@ -193,18 +193,22 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zero.                                #
         ############################################################################
 
-        # push input_dim to the front of list, and add the num classes to back
-        temp_dims = np.copy(hidden_dims)
-        temp_dims = np.insert(temp_dims,0,input_dim)
-        temp_dims = np.insert(temp_dims,len(temp_dims),num_classes )
+         # push input_dim to the front of list, and add the num classes to back
+        temp_dims =  copy.deepcopy(hidden_dims)
+        temp_dims.insert(0,input_dim)
+        temp_dims.insert(len(temp_dims),num_classes )
 
         i = 0
         while i <= self.num_layers-1:
             self.params['W' + str(i)] = np.random.normal(loc=0.0, scale=weight_scale,
                                                          size=(temp_dims[i], temp_dims[i+1]))
             self.params['b' + str(i)] = np.zeros(temp_dims[i+1])
-            # self.params['gamma' + str(i)] =
-            # self.params['beta'  + str(i)] =
+            import pdb
+            pdb.set_trace()
+            
+            if self.use_batchnorm == True:
+                self.params['gamma' + str(i)] = np.ones(temp_dims[i+1])
+                self.params['beta'  + str(i)] = np.zeros(temp_dims[i+1])
             i = i + 1
 
         ############################################################################
@@ -264,7 +268,8 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
 
-        localdata = {}
+        local_affinedata = {}
+        local_bnData = {}
         do_data = {}
         i = 0
 
@@ -275,18 +280,20 @@ class FullyConnectedNet(object):
             scores,cache  = affine_forward(next_input, self.params['W' + str(i)], self.params['b' + str(i)])
 
             #cache results
-            localdata[i] = cache
+            local_affinedata[i] = cache
 
-            #dont do last layer since it is softmax with no relu
+            #dont do last layer since it is softmax with no batch norm or relu
             if i != self.num_layers-1:
-                #relu it all
+                #batch norm
+                if self.use_batchnorm:
+                    scores, local_bnData[i] = batchnorm_forward(scores, self.params["gamma" + str(i)], self.params["beta" + str(i)], self.bn_params[i])
+
+                #relu it
                 next_input, _ = relu_forward(scores)
 
-                #add dropout if needed
+                #dropout
                 if self.use_dropout:
-                    out,do_cache = dropout_forward(next_input,self.dropout_param)
-                    do_data[i] = do_cache
-                    next_input = out
+                    next_input,do_data[i] = dropout_forward(next_input,self.dropout_param)
 
             i = i + 1
         ############################################################################
@@ -325,18 +332,21 @@ class FullyConnectedNet(object):
 
             # use dw and db to change W2 and b2
             # use dx to propegate back through relu
-            dx, dw, db = affine_backward(dout, localdata[i])
+            dx, dw, db = affine_backward(dout, local_affinedata[i])
 
             #adjust net params
             grads["W" + str(i)] = dw + self.reg * self.params["W" + str(i)]
             grads["b" + str(i)] = db
 
             if i != 0:
-                dx = relu_backward(dx, localdata[i][W_position])
+                dx = relu_backward(dx, local_affinedata[i][W_position])
                 if self.use_dropout:
                     #get the mask
                     dx = dx*do_data[i-1][1]
-
+                if self.use_batchnorm:
+                    dx,dgamma,dbeta = batchnorm_backward(dx, local_bnData[i-1])
+                    grads['gamma'+str(i-1)] = dgamma
+                    grads['beta'+str(i-1)] = dbeta
             dout = dx
             i = i - 1
 
