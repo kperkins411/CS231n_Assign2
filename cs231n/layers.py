@@ -397,8 +397,8 @@ def conv_forward_naive(x, w, b, conv_param):
   all C channels and has height HH and width HH.
 
   Input:
-  - x: Input data of shape (N, C, H, W)
-  - w: Filter weights of shape (F, C, HH, WW)
+  - x: Input data of shape (N, C, H, W)  samples,channels, height, width
+  - w: Filter weights of shape (F, C, HH, WW)  filters, channels, kernalheight, kernalwidth
   - b: Biases, of shape (F,)
   - conv_param: A dictionary with the following keys:
     - 'stride': The number of pixels between adjacent receptive fields in the
@@ -416,13 +416,49 @@ def conv_forward_naive(x, w, b, conv_param):
   # TODO: Implement the convolutional forward pass.                           #
   # Hint: you can use the function np.pad for padding.                        #
   #############################################################################
-  pass
+  stride = conv_param['stride']
+  pad = conv_param['pad']
+
+  N = x.shape[0]  #number samples
+  C = x.shape[1]  #channels
+  H = x.shape[2]  #sample height
+  W = x.shape[3]  #sample width
+
+  F  = w.shape[0] #number of different filter LAYERS
+  HH = w.shape[2] #height of each filter (same for every layer)
+  WW = w.shape[3] #width  "
+
+  W_n = int( 1 + (W + 2 * pad - WW) / stride )  #number filters accross
+  H_n = int( 1 + (H + 2 * pad - HH) / stride )  #            "  down
+
+  #Pad the input array
+  H_with_zero_padding = H + 2*pad
+  W_with_zero_padding = W + 2*pad
+  XPadded = np.zeros(N*C*H_with_zero_padding*W_with_zero_padding)
+  XPadded = XPadded.reshape(N,C,H_with_zero_padding,W_with_zero_padding)
+  XPadded[:,:,pad:W+pad,pad:H+pad] = x
+
+  #create our output array (
+  out = np.zeros(N*F*H_n*W_n)
+  out = out.reshape((N,F,H_n,W_n))
+
+  #now lets iterate over the loop
+  for each_sample in range(N):
+    for each_layer in range(F):
+      for h_n in range(H_n):
+        hstart = h_n*stride
+        hstop  = hstart + HH
+
+        for w_n in range(W_n):
+          wstart = w_n*stride
+          wstop = wstart + WW
+          out[each_sample,each_layer,h_n,w_n ] = np.sum(XPadded[each_sample,:,hstart:hstop,wstart:wstop] * w[each_layer,:,:,:])+ b[each_layer]
+
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
   cache = (x, w, b, conv_param)
   return out, cache
-
 
 def conv_backward_naive(dout, cache):
   """
