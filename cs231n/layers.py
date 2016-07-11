@@ -461,27 +461,54 @@ def conv_forward_naive(x, w, b, conv_param):
   return out, cache
 
 def conv_backward_naive(dout, cache):
-  """
-  A naive implementation of the backward pass for a convolutional layer.
+    """
+         A naive implementation of the backward pass for a convolutional layer.
 
-  Inputs:
-  - dout: Upstream derivatives.
-  - cache: A tuple of (x, w, b, conv_param) as in conv_forward_naive
+         Inputs:
+         - dout: Upstream derivatives.
+         - cache: A tuple of (x, w, b, conv_param) as in conv_forward_naive
 
-  Returns a tuple of:
-  - dx: Gradient with respect to x
-  - dw: Gradient with respect to w
-  - db: Gradient with respect to b
-  """
-  dx, dw, db = None, None, None
-  #############################################################################
-  # TODO: Implement the convolutional backward pass.                          #
-  #############################################################################
-  pass
-  #############################################################################
-  #                             END OF YOUR CODE                              #
-  #############################################################################
-  return dx, dw, db
+         Returns a tuple of:
+         - dx: Gradient with respect to x
+         - dw: Gradient with respect to w
+         - db: Gradient with respect to b
+    """
+    dx, dw, db = None, None, None
+    # Unwrap cache
+    x, w, b, conv_param = cache
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+
+    x_pad = np.pad(x, pad_width=[(0,), (0,), (pad,), (pad,)], mode='constant', constant_values=0)
+
+    # Shape the numpy arrays
+    dx_pad = np.zeros_like(x_pad) # We will trim off the dx's on the paddings later
+    dx = np.zeros_like(x)
+    dw = np.zeros_like(w)
+    db = np.zeros_like(b)
+
+    # db calculation
+    db = np.sum(dout, axis = (0,2,3))
+
+    # Loading up some values before going to calculate dw and dx
+    H_prime = (H+2*pad-HH)/stride+1
+    W_prime = (W+2*pad-WW)/stride+1
+    #for n in xrange(N):
+    for i in xrange(H_prime):
+        for j in xrange(W_prime):
+            selected_x = x_pad[:,:,i*stride : i*stride+HH, j*stride : j*stride+WW]
+            selected_shape = selected_x.shape
+            for k in xrange(F):
+                dw[k] += np.sum(selected_x*(dout[:,k,i,j])[:,None,None,None], axis=0)
+                dx_pad[:,:,i*stride : i*stride+HH, j*stride : j*stride+WW] +=\
+                np.einsum('ij,jklm->iklm', dout[:,:,i,j], w)
+                dx = dx_pad[:,:,pad:-pad,pad:-pad]
+                #############################################################################
+                #                             END OF YOUR CODE                              #
+                #############################################################################
+    return dx, dw, db
 
 
 def max_pool_forward_naive(x, pool_param):
