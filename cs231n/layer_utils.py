@@ -1,6 +1,6 @@
 from cs231n.layers import *
 from cs231n.fast_layers import *
-
+#code taken from another github solution
 
 def affine_relu_forward(x, w, b):
   """
@@ -30,7 +30,6 @@ def affine_relu_backward(dout, cache):
   return dx, dw, db
 
 
-pass
 
 
 def conv_relu_forward(x, w, b, conv_param):
